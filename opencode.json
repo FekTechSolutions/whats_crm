@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "baseURL": "http://127.0.0.1:11434",
+      "model": "qwen2.5-coder"
+    }
+  },
+  "ignore": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/dist/**"
+  ]
+}
