@@ -17,10 +17,12 @@ const corsOptions = {
   credentials: true,
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
   allowedHeaders: ["Authorization", "Content-Type"],
+  optionsSuccessStatus: 200 // Suporte para navegadores legados e proxies
 };
 
 app.set("trust proxy", 1);
 
+// Apenas esta linha já é suficiente para tratar CORS e requisições preflight OPTIONS
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
