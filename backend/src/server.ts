@@ -1,6 +1,6 @@
-import { createServer } from "node:http";
 import express from "express";
 import cors from "cors";
+import { createServer } from "node:http";
 import { Server } from "socket.io";
 
 import { env } from "./config/env.js";
@@ -12,20 +12,24 @@ const app = express();
 app.set("trust proxy", 1);
 
 /**
+ * =====================================================
  * CORS
+ * =====================================================
  */
+
 const allowedOrigins = [
   "https://snow-duck-110419.hostingersite.com",
   "https://papayawhip-wren-243126.hostingersite.com",
   env.FRONTEND_URL?.replace(/\/$/, ""),
 ].filter(Boolean);
 
+console.log("🌐 CORS allowed origins:", allowedOrigins);
+
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    console.log("🌐 CORS Origin:", origin);
+    console.log("🌐 Request Origin:", origin);
 
-    // Permite requisições sem Origin
-    // Ex.: Postman, webhooks e servidor-servidor
+    // Permite chamadas sem Origin
     if (!origin) {
       return callback(null, true);
     }
@@ -34,10 +38,10 @@ const corsOptions: cors.CorsOptions = {
       return callback(null, true);
     }
 
-    console.error("❌ Origem bloqueada pelo CORS:", origin);
+    console.error("❌ CORS bloqueado:", origin);
 
     return callback(
-      new Error(`Origem não permitida pelo CORS: ${origin}`)
+      new Error(`Origin not allowed by CORS: ${origin}`)
     );
   },
 
@@ -64,45 +68,35 @@ const corsOptions: cors.CorsOptions = {
 };
 
 /**
- * CORS global
+ * CORS deve ser o PRIMEIRO middleware
  */
 app.use(cors(corsOptions));
 
 /**
- * Body parsers
+ * =====================================================
+ * BODY
+ * =====================================================
  */
+
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 /**
- * Rotas
+ * =====================================================
+ * ROUTES
+ * =====================================================
  */
+
 app.use(webhookRouter);
 
 app.use("/api", apiRouter);
 
 /**
- * Socket.IO
+ * =====================================================
+ * ERROR HANDLER
+ * =====================================================
  */
-const server = createServer(app);
 
-export const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ["GET", "POST"],
-  },
-});
-
-io.on("connection", (socket) => {
-  socket.on("conversation:join", (id: string) => {
-    socket.join(`conversation:${id}`);
-  });
-});
-
-/**
- * Error handler
- */
 app.use(
   (
     error: unknown,
@@ -110,22 +104,55 @@ app.use(
     response: express.Response,
     _next: express.NextFunction
   ) => {
-    console.error("🔥 Erro capturado no Express:", error);
+    console.error("🔥 Erro capturado pelo Express:", error);
 
     return response.status(500).json({
-      message: "Erro interno do servidor ao processar a requisição.",
-      error: error instanceof Error ? error.message : String(error),
+      message: "Erro interno do servidor.",
+      error:
+        error instanceof Error
+          ? error.message
+          : String(error),
     });
   }
 );
 
 /**
- * Servidor local
+ * =====================================================
+ * SOCKET.IO
+ * =====================================================
+ *
+ * Socket.IO funciona apenas no servidor tradicional.
+ * Na Vercel Serverless não usamos o listener.
  */
+
 if (!process.env.VERCEL) {
+  const server = createServer(app);
+
+  const io = new Server(server, {
+    cors: {
+      origin: allowedOrigins,
+      credentials: true,
+      methods: ["GET", "POST"],
+    },
+  });
+
+  io.on("connection", (socket) => {
+    console.log("🔌 Socket conectado:", socket.id);
+
+    socket.on("conversation:join", (id: string) => {
+      socket.join(`conversation:${id}`);
+    });
+  });
+
   server.listen(env.PORT, () => {
-    console.log(`Backend disponível na porta ${env.PORT}`);
+    console.log(`🚀 Backend disponível na porta ${env.PORT}`);
   });
 }
+
+/**
+ * =====================================================
+ * VERCEL
+ * =====================================================
+ */
 
 export default app;
