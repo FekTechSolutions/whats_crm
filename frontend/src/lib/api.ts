@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/client";
 export const api = axios.create({
   baseURL:
     import.meta.env.VITE_API_URL ??
-    "https://papayawhip-wren-243126.hostingersite.com/api",
+    "https://whats-crm-backend.vercel.app/api",
   timeout: 15_000,
 });
 

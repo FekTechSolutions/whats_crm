@@ -65,6 +65,12 @@ app.use(
   }
 );
 
-server.listen(env.PORT, () => {
-  console.log(`Backend disponível na porta ${env.PORT}`);
-});
+// O Vercel executa o Express como uma Function; portanto, não deve abrir uma
+// porta própria no ambiente Vercel. Localmente, o servidor continua normal.
+if (!process.env.VERCEL) {
+  server.listen(env.PORT, () => {
+    console.log(`Backend disponível na porta ${env.PORT}`);
+  });
+}
+
+export default app;
