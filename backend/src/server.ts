@@ -12,21 +12,22 @@ import { webhookRouter } from "./routes/webhook.js";
 const app = express();
 const server = createServer(app);
 
-// 1. Configuração de CORS Unificada
 const corsOptions = {
   origin: [
     "https://snow-duck-110419.hostingersite.com",
     "https://papayawhip-wren-243126.hostingersite.com",
-    env.FRONTEND_URL
   ],
   credentials: true,
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
   allowedHeaders: ["Authorization", "Content-Type"],
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
 };
 
 app.set("trust proxy", 1);
 app.use(cors(corsOptions));
+
+// Explicitly handle preflight OPTIONS for all routes
+app.options("*", cors(corsOptions));
 
 // 2. Middlewares de Parsing Globais (DEVEM ficar ANTES de apiRouter)
 app.use(express.json({ limit: "1mb" }));

@@ -1,7 +1,22 @@
+// In db/supabase.ts
 import { createClient } from "@supabase/supabase-js";
 import { env } from "../config/env.js";
 
-// This client bypasses RLS. It must only be used by the backend.
-export const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+export const supabaseAdmin = createClient(
+  env.SUPABASE_URL,
+  env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: {
+      fetch: (url, options) => {
+        return fetch(url, {
+          ...options,
+          signal: AbortSignal.timeout(8000), // 8-second hard limit to prevent 12s Hostinger gateway timeouts
+        });
+      },
+    },
+  }
+);
