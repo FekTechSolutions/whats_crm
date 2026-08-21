@@ -10,6 +10,23 @@ import { apiRouter } from "./routes/api.js";
 import { webhookRouter } from "./routes/webhook.js";
 
 const app = express();
+// Adicione isto imediatamente APÓS instanciar o `const app = express();`
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "https://snow-duck-110419.hostingersite.com");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+  );
+
+  // Se a requisição for OPTIONS, responde 200/204 imediatamente sem esperar nada do banco/rotas
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  next();
+});
 const server = createServer(app);
 
 // Lista dinâmica de origens permitidas
