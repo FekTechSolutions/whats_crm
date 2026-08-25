@@ -72,6 +72,9 @@ const corsOptions: cors.CorsOptions = {
  */
 app.use(cors(corsOptions));
 
+// The Meta signature is calculated from the unparsed request body.
+app.use(webhookRouter);
+
 /**
  * =====================================================
  * BODY
@@ -86,8 +89,6 @@ app.use(express.urlencoded({ extended: true }));
  * ROUTES
  * =====================================================
  */
-
-app.use(webhookRouter);
 
 app.use("/api", apiRouter);
 

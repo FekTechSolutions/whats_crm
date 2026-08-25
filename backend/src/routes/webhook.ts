@@ -20,6 +20,11 @@ webhookRouter.post("/webhooks/whatsapp", raw({ type: "application/json" }), asyn
   const signature = request.header("x-hub-signature-256");
   const body = request.body as Buffer;
 
+  if (!Buffer.isBuffer(body)) {
+    console.error("Webhook request body was not received as raw bytes.");
+    return response.sendStatus(400);
+  }
+
   // Garante a validação da assinatura de forma segura
   if (!signature || !env.META_APP_SECRET) {
     console.error("❌ Signature ausente ou META_APP_SECRET não configurada.");
@@ -42,13 +47,13 @@ webhookRouter.post("/webhooks/whatsapp", raw({ type: "application/json" }), asyn
   }
 
   // RESPONDE 200 OK IMEDIATAMENTE À META (Gera o 2º visto cinza/azul na hora)
-  response.status(200).send("EVENT_RECEIVED");
-
   // PROCESSA A GRAVAÇÃO EM SEGUNDO PLANO
   try {
     const payload = JSON.parse(body.toString("utf8"));
     await persistWebhookEvents(payload);
+    return response.status(200).send("EVENT_RECEIVED");
   } catch (error) {
     console.error("🔥 Erro ao processar/persistir evento no banco:", error);
+    return response.sendStatus(500);
   }
 });
