@@ -9,6 +9,12 @@ export const webhookRouter = Router();
 webhookRouter.get("/webhooks/whatsapp", (request, response) => {
   const { "hub.mode": mode, "hub.verify_token": token, "hub.challenge": challenge } = request.query;
 
+  console.info("WhatsApp webhook verification requested", {
+    mode,
+    hasToken: typeof token === "string",
+    hasChallenge: typeof challenge === "string",
+  });
+
   if (mode === "subscribe" && typeof token === "string" && token === env.WHATSAPP_WEBHOOK_VERIFY_TOKEN && typeof challenge === "string") {
     return response.type("text/plain").status(200).send(challenge);
   }
@@ -19,6 +25,12 @@ webhookRouter.get("/webhooks/whatsapp", (request, response) => {
 webhookRouter.post("/webhooks/whatsapp", raw({ type: "application/json" }), async (request, response) => {
   const signature = request.header("x-hub-signature-256");
   const body = request.body as Buffer;
+
+  console.info("WhatsApp webhook received", {
+    contentType: request.header("content-type"),
+    hasSignature: Boolean(signature),
+    bodySize: Buffer.isBuffer(body) ? body.length : 0,
+  });
 
   if (!Buffer.isBuffer(body)) {
     console.error("Webhook request body was not received as raw bytes.");
@@ -51,6 +63,7 @@ webhookRouter.post("/webhooks/whatsapp", raw({ type: "application/json" }), asyn
   try {
     const payload = JSON.parse(body.toString("utf8"));
     await persistWebhookEvents(payload);
+    console.info("WhatsApp webhook persisted successfully");
     return response.status(200).send("EVENT_RECEIVED");
   } catch (error) {
     console.error("🔥 Erro ao processar/persistir evento no banco:", error);

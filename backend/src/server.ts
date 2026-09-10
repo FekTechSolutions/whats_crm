@@ -18,10 +18,12 @@ app.set("trust proxy", 1);
  */
 
 const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
   "https://snow-duck-110419.hostingersite.com",
   "https://papayawhip-wren-243126.hostingersite.com",
   env.FRONTEND_URL?.replace(/\/$/, ""),
-].filter(Boolean);
+].filter(Boolean) as string[];
 
 console.log("🌐 CORS allowed origins:", allowedOrigins);
 
@@ -29,7 +31,7 @@ const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     console.log("🌐 Request Origin:", origin);
 
-    // Permite chamadas sem Origin
+    // Permite chamadas sem Origin (Postman, Server-to-Server, Webhooks)
     if (!origin) {
       return callback(null, true);
     }
@@ -38,11 +40,11 @@ const corsOptions: cors.CorsOptions = {
       return callback(null, true);
     }
 
-    console.error("❌ CORS bloqueado:", origin);
+    console.error("❌ CORS bloqueado para a origem:", origin);
 
-    return callback(
-      new Error(`Origin not allowed by CORS: ${origin}`)
-    );
+    // Em vez de retornar um Error() que invalida o Preflight, 
+    // passe `false` para indicar que a origem não é permitida de forma limpa.
+    return callback(null, false);
   },
 
   credentials: true,
@@ -72,8 +74,8 @@ const corsOptions: cors.CorsOptions = {
  */
 app.use(cors(corsOptions));
 
-// The Meta signature is calculated from the unparsed request body.
-app.use(webhookRouter);
+// Garante o tratamento explícito de solicitações Preflight (OPTIONS)
+app.options("*", cors(corsOptions));
 
 /**
  * =====================================================

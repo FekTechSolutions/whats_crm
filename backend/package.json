@@ -9,13 +9,13 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
     "axios": "^1.19.0",
-    "cors": "^2.8.5",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.1",
     "express": "^5.2.1",
     "multer": "^2.0.2",
     "socket.io": "^4.8.1",
-    "@supabase/supabase-js": "^2.111.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
