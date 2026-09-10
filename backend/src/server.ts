@@ -31,7 +31,6 @@ const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     console.log("🌐 Request Origin:", origin);
 
-    // Permite chamadas sem Origin (Postman, Server-to-Server, Webhooks)
     if (!origin) {
       return callback(null, true);
     }
@@ -41,9 +40,6 @@ const corsOptions: cors.CorsOptions = {
     }
 
     console.error("❌ CORS bloqueado para a origem:", origin);
-
-    // Em vez de retornar um Error() que invalida o Preflight, 
-    // passe `false` para indicar que a origem não é permitida de forma limpa.
     return callback(null, false);
   },
 
@@ -73,9 +69,6 @@ const corsOptions: cors.CorsOptions = {
  * CORS deve ser o PRIMEIRO middleware
  */
 app.use(cors(corsOptions));
-
-// Garante o tratamento explícito de solicitações Preflight (OPTIONS)
-app.options("*", cors(corsOptions));
 
 /**
  * =====================================================
