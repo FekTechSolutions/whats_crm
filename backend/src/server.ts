@@ -85,7 +85,7 @@ app.use(express.urlencoded({ extended: true }));
  * =====================================================
  */
 
-app.use("/api", apiRouter);
+app.use("/webhooks", webhookRouter);
 
 /**
  * =====================================================
