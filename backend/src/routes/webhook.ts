@@ -1,13 +1,24 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Router, raw } from "express";
+
 import { env } from "../config/env.js";
 import { persistWebhookEvents } from "../services/webhook-events.js";
 
 export const webhookRouter = Router();
 
-// 1. Validação GET (Meta Verify Token)
-webhookRouter.get("/webhooks/whatsapp", (request, response) => {
-  const { "hub.mode": mode, "hub.verify_token": token, "hub.challenge": challenge } = request.query;
+/**
+ * =====================================================
+ * GET /webhooks/whatsapp
+ * Validação do webhook pela Meta
+ * =====================================================
+ */
+
+webhookRouter.get("/whatsapp", (request, response) => {
+  const {
+    "hub.mode": mode,
+    "hub.verify_token": token,
+    "hub.challenge": challenge,
+  } = request.query;
 
   console.info("WhatsApp webhook verification requested", {
     mode,
@@ -15,58 +26,134 @@ webhookRouter.get("/webhooks/whatsapp", (request, response) => {
     hasChallenge: typeof challenge === "string",
   });
 
-  if (mode === "subscribe" && typeof token === "string" && token === env.WHATSAPP_WEBHOOK_VERIFY_TOKEN && typeof challenge === "string") {
-    return response.type("text/plain").status(200).send(challenge);
+  if (
+    mode === "subscribe" &&
+    typeof token === "string" &&
+    token === env.WHATSAPP_WEBHOOK_VERIFY_TOKEN &&
+    typeof challenge === "string"
+  ) {
+    return response
+      .type("text/plain")
+      .status(200)
+      .send(challenge);
   }
+
   return response.sendStatus(403);
 });
 
-// 2. Recebimento POST (Mensagens do Cliente)
-webhookRouter.post("/webhooks/whatsapp", raw({ type: "application/json" }), async (request, response) => {
-  const signature = request.header("x-hub-signature-256");
-  const body = request.body as Buffer;
+/**
+ * =====================================================
+ * POST /webhooks/whatsapp
+ * Recebimento de eventos da Meta
+ * =====================================================
+ */
 
-  console.info("WhatsApp webhook received", {
-    contentType: request.header("content-type"),
-    hasSignature: Boolean(signature),
-    bodySize: Buffer.isBuffer(body) ? body.length : 0,
-  });
+webhookRouter.post(
+  "/whatsapp",
+  raw({ type: "application/json" }),
+  async (request, response) => {
+    const signature = request.header("x-hub-signature-256");
 
-  if (!Buffer.isBuffer(body)) {
-    console.error("Webhook request body was not received as raw bytes.");
-    return response.sendStatus(400);
-  }
+    const body = request.body as Buffer;
 
-  // Garante a validação da assinatura de forma segura
-  if (!signature || !env.META_APP_SECRET) {
-    console.error("❌ Signature ausente ou META_APP_SECRET não configurada.");
-    return response.sendStatus(403);
-  }
+    console.info("WhatsApp webhook received", {
+      contentType: request.header("content-type"),
+      hasSignature: Boolean(signature),
+      bodySize: Buffer.isBuffer(body) ? body.length : 0,
+    });
 
-  try {
-    const expected = `sha256=${createHmac("sha256", env.META_APP_SECRET).update(body).digest("hex")}`;
+    /**
+     * Garantir que o body seja realmente Buffer
+     */
+    if (!Buffer.isBuffer(body)) {
+      console.error(
+        "❌ Webhook request body was not received as raw bytes."
+      );
 
-    const sigBuffer = Buffer.from(signature);
-    const expBuffer = Buffer.from(expected);
+      return response.sendStatus(400);
+    }
 
-    if (sigBuffer.length !== expBuffer.length || !timingSafeEqual(sigBuffer, expBuffer)) {
-      console.error("❌ Falha na validação HMAC (Signature Invalida). Verifique a variável META_APP_SECRET.");
+    /**
+     * Validar configuração
+     */
+    if (!signature || !env.META_APP_SECRET) {
+      console.error(
+        "❌ Signature ausente ou META_APP_SECRET não configurada."
+      );
+
       return response.sendStatus(403);
     }
-  } catch (err) {
-    console.error("🔥 Erro ao validar HMAC:", err);
-    return response.sendStatus(403);
-  }
 
-  // RESPONDE 200 OK IMEDIATAMENTE À META (Gera o 2º visto cinza/azul na hora)
-  // PROCESSA A GRAVAÇÃO EM SEGUNDO PLANO
-  try {
-    const payload = JSON.parse(body.toString("utf8"));
-    await persistWebhookEvents(payload);
-    console.info("WhatsApp webhook persisted successfully");
-    return response.status(200).send("EVENT_RECEIVED");
-  } catch (error) {
-    console.error("🔥 Erro ao processar/persistir evento no banco:", error);
-    return response.sendStatus(500);
+    /**
+     * =================================================
+     * VALIDAÇÃO HMAC
+     * =================================================
+     */
+
+    try {
+      const expected =
+        `sha256=${
+          createHmac("sha256", env.META_APP_SECRET)
+            .update(body)
+            .digest("hex")
+        }`;
+
+      const sigBuffer = Buffer.from(signature, "utf8");
+      const expBuffer = Buffer.from(expected, "utf8");
+
+      if (
+        sigBuffer.length !== expBuffer.length ||
+        !timingSafeEqual(sigBuffer, expBuffer)
+      ) {
+        console.error(
+          "❌ Falha na validação HMAC."
+        );
+
+        return response.sendStatus(403);
+      }
+
+      console.info("✅ Assinatura HMAC válida.");
+    } catch (error) {
+      console.error(
+        "🔥 Erro ao validar HMAC:",
+        error
+      );
+
+      return response.sendStatus(403);
+    }
+
+    /**
+     * =================================================
+     * PROCESSAMENTO
+     * =================================================
+     */
+
+    try {
+      const payload = JSON.parse(
+        body.toString("utf8")
+      );
+
+      console.info(
+        "📩 Evento WhatsApp recebido:",
+        JSON.stringify(payload)
+      );
+
+      await persistWebhookEvents(payload);
+
+      console.info(
+        "✅ WhatsApp webhook persisted successfully"
+      );
+
+      return response
+        .status(200)
+        .send("EVENT_RECEIVED");
+    } catch (error) {
+      console.error(
+        "🔥 Erro ao processar/persistir evento no banco:",
+        error
+      );
+
+      return response.sendStatus(500);
+    }
   }
-});
+);

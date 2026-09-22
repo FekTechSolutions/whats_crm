@@ -31,6 +31,7 @@ const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     console.log("🌐 Request Origin:", origin);
 
+    // Meta não envia Origin
     if (!origin) {
       return callback(null, true);
     }
@@ -66,13 +67,19 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 204,
 };
 
+app.use(cors(corsOptions));
+
 /**
  * =====================================================
- * CORS
+ * WEBHOOK META
  * =====================================================
+ *
+ * IMPORTANTE:
+ * Deve ficar ANTES do express.json()
+ * porque o webhook precisa do Buffer original.
  */
 
-app.use(cors(corsOptions));
+app.use("/webhooks", webhookRouter);
 
 /**
  * =====================================================
@@ -101,14 +108,10 @@ app.use((req, _res, next) => {
 
 /**
  * =====================================================
- * ROUTES
+ * API CRM
  * =====================================================
  */
 
-// Webhooks da Meta
-app.use("/webhooks", webhookRouter);
-
-// API do CRM
 app.use("/api", apiRouter);
 
 /**
