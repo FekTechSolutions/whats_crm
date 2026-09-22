@@ -1,11 +1,15 @@
 import { supabaseAdmin } from "../db/supabase.js";
 
 type MetaPayload = {
-  entry?: Array<{ changes?: Array<{ value?: {
-    contacts?: Array<{ profile?: { name?: string } }>;
-    messages?: Array<{ id: string; from: string; type: string; text?: { body?: string } }>;
-    statuses?: Array<{ id: string; status: string }>;
-  } }> }>;
+  entry?: Array<{
+    changes?: Array<{
+      value?: {
+        contacts?: Array<{ profile?: { name?: string } }>;
+        messages?: Array<{ id: string; from: string; type: string; text?: { body?: string } }>;
+        statuses?: Array<{ id: string; status: string }>;
+      }
+    }>
+  }>;
 };
 
 export async function persistWebhookEvents(payload: MetaPayload) {
@@ -18,14 +22,44 @@ export async function persistWebhookEvents(payload: MetaPayload) {
 
     for (const incoming of value.messages ?? []) {
       incomingCount += 1;
-      const { error } = await supabaseAdmin.rpc("ingest_whatsapp_message", {
-        p_whatsapp: incoming.from,
-        p_name: value.contacts?.[0]?.profile?.name?.trim() || incoming.from,
-        p_wa_message_id: incoming.id,
-        p_type: normalizeMessageType(incoming.type),
-        p_content: incoming.text?.body ?? `[${incoming.type}]`,
+      const { data, error } = await supabaseAdmin.rpc(
+        "ingest_whatsapp_message",
+        {
+          p_whatsapp: incoming.from,
+          p_name:
+            value.contacts?.[0]?.profile?.name?.trim() ||
+            incoming.from,
+          p_wa_message_id: incoming.id,
+          p_type: normalizeMessageType(incoming.type),
+          p_content:
+            incoming.text?.body ?? `[${incoming.type}]`,
+        }
+      );
+
+      if (error) {
+        console.error("❌ ERRO NO RPC ingest_whatsapp_message", {
+          error,
+          incoming,
+          rpcParams: {
+            p_whatsapp: incoming.from,
+            p_name:
+              value.contacts?.[0]?.profile?.name?.trim() ||
+              incoming.from,
+            p_wa_message_id: incoming.id,
+            p_type: normalizeMessageType(incoming.type),
+            p_content:
+              incoming.text?.body ?? `[${incoming.type}]`,
+          },
+        });
+
+        throw error;
+      }
+
+      console.info("✅ RPC ingest_whatsapp_message OK", {
+        data,
+        whatsapp: incoming.from,
+        messageId: incoming.id,
       });
-      if (error) throw error;
     }
 
     for (const status of value.statuses ?? []) {

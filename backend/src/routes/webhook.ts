@@ -92,10 +92,9 @@ webhookRouter.post(
 
     try {
       const expected =
-        `sha256=${
-          createHmac("sha256", env.META_APP_SECRET)
-            .update(body)
-            .digest("hex")
+        `sha256=${createHmac("sha256", env.META_APP_SECRET)
+          .update(body)
+          .digest("hex")
         }`;
 
       const sigBuffer = Buffer.from(signature, "utf8");
@@ -129,9 +128,7 @@ webhookRouter.post(
      */
 
     try {
-      const payload = JSON.parse(
-        body.toString("utf8")
-      );
+      const payload = JSON.parse(body.toString("utf8"));
 
       console.info(
         "📩 Evento WhatsApp recebido:",
@@ -148,9 +145,22 @@ webhookRouter.post(
         .status(200)
         .send("EVENT_RECEIVED");
     } catch (error) {
+      console.error("🔥 ERRO AO PROCESSAR WEBHOOK");
+
+      console.error("Tipo:", typeof error);
+
       console.error(
-        "🔥 Erro ao processar/persistir evento no banco:",
-        error
+        "Erro:",
+        error instanceof Error
+          ? error.message
+          : error
+      );
+
+      console.error(
+        "Stack:",
+        error instanceof Error
+          ? error.stack
+          : undefined
       );
 
       return response.sendStatus(500);
