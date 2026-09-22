@@ -40,7 +40,8 @@ const corsOptions: cors.CorsOptions = {
     }
 
     console.error("❌ CORS bloqueado para a origem:", origin);
-    return callback(null, false);
+
+    return callback(new Error("Origin não permitida pelo CORS"));
   },
 
   credentials: true,
@@ -66,8 +67,11 @@ const corsOptions: cors.CorsOptions = {
 };
 
 /**
- * CORS deve ser o PRIMEIRO middleware
+ * =====================================================
+ * CORS
+ * =====================================================
  */
+
 app.use(cors(corsOptions));
 
 /**
@@ -81,11 +85,31 @@ app.use(express.urlencoded({ extended: true }));
 
 /**
  * =====================================================
+ * DEBUG
+ * =====================================================
+ */
+
+app.use((req, _res, next) => {
+  console.log("➡️ REQUEST:", {
+    method: req.method,
+    url: req.url,
+    originalUrl: req.originalUrl,
+  });
+
+  next();
+});
+
+/**
+ * =====================================================
  * ROUTES
  * =====================================================
  */
 
+// Webhooks da Meta
 app.use("/webhooks", webhookRouter);
+
+// API do CRM
+app.use("/api", apiRouter);
 
 /**
  * =====================================================
@@ -116,9 +140,6 @@ app.use(
  * =====================================================
  * SOCKET.IO
  * =====================================================
- *
- * Socket.IO funciona apenas no servidor tradicional.
- * Na Vercel Serverless não usamos o listener.
  */
 
 if (!process.env.VERCEL) {
